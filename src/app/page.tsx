@@ -5,6 +5,7 @@ import { Canvas } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import { div } from "three/src/nodes/TSL.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import TWEEN from "@tweenjs/tween.js";
 
 const angleToRad = (deg: number) => {
   return deg * (Math.PI / 180);
@@ -99,15 +100,23 @@ export default function HomePage() {
     const discMaterial = new THREE.MeshStandardMaterial({
       color: 0xffffff,
       transparent: true,
+      emissive: 0xffffff, // Add emissive color [[4]]
+      emissiveIntensity: 0, // Start fully dark
       opacity: 0,
+      side: THREE.BackSide,
     });
 
     // Create a mesh for the disc
     const disc = new THREE.Mesh(discGeometry, discMaterial);
-    disc.receiveShadow = true;
+    disc.castShadow = true;
     disc.position.set(0, -0.95, 0);
+    // disc.position.set(0, 0, 0);
     disc.rotation.x = angleToRad(90);
-    scene.add(disc);
+    const discLightUpDuration = 2000;
+    const lightUpTween = new TWEEN.Tween(disc.material)
+      .to({ emissiveIntensity: 1, opacity: 1 }, discLightUpDuration)
+      .easing(TWEEN.Easing.Linear.None) // Linear interpolation [[7]]
+      .start();
 
     // 4. Force render order (draw discs last)
     disc.renderOrder = 1;
@@ -164,14 +173,18 @@ export default function HomePage() {
           pointLight.intensity = 0.01 + 0.49 * rotationProgress;
           spotLight.intensity = 0.01 + 0.99 * rotationProgress;
 
+          scene.add(disc);
+          lightUpTween.start();
+          discMaterial.needsUpdate = true;
+          lightUpTween.update(time);
           requestAnimationFrame(animate);
           return;
         }
 
         // Final light and beam positioning
-        rightLightBeam.rotation.z = angleToRad(-25);
+        rightLightBeam.rotation.z = angleToRad(-24.8);
         rightLightBeam.rotation.x = 0;
-        leftLightBeam.rotation.z = angleToRad(25);
+        leftLightBeam.rotation.z = angleToRad(24.8);
         leftLightBeam.rotation.x = 0;
 
         ambientLight.intensity = 1;
