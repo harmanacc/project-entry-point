@@ -10,6 +10,10 @@ const angleToRad = (deg: number) => {
   return deg * (Math.PI / 180);
 };
 
+function getRandomInterval(min: number, max: number) {
+  return Math.random() * (max - min + 1) + min;
+}
+
 export default function HomePage() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -58,8 +62,8 @@ export default function HomePage() {
 
     // Simulate the light beam with a semi-transparent cone
     const clippingPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0.95);
-    const lightBeamGeometry = new THREE.ConeGeometry(1.5, 8, 40);
-    const lightBeamMaterial = new THREE.MeshBasicMaterial({
+    const rightLightBeamGeometry = new THREE.ConeGeometry(1.5, 8, 40);
+    const rightLightBeamMaterial = new THREE.MeshBasicMaterial({
       color: 0xffffff,
       transparent: true,
       opacity: 0.3,
@@ -67,23 +71,31 @@ export default function HomePage() {
       side: THREE.DoubleSide,
       depthWrite: false,
     });
-    const rightLightBeam = new THREE.Mesh(lightBeamGeometry, lightBeamMaterial);
-    // rightLightBeam.position.set(1.5, 2, 0);
-    // rightLightBeam.rotation.z = angleToRad(-25);
-    // rightLightBeam.rotation.x = angleToRad(-3);
+    const leftLightBeamGeometry = new THREE.ConeGeometry(1.5, 8, 40);
+    const leftLightBeamMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.3,
+      clippingPlanes: [clippingPlane],
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    const rightLightBeam = new THREE.Mesh(
+      rightLightBeamGeometry,
+      rightLightBeamMaterial,
+    );
 
     // initial light beam position
     rightLightBeam.position.set(1.5, 2, 0);
     rightLightBeam.rotation.z = 0; // Straight down
-    // rightLightBeam.rotation.z = angleToRad(90); // Facing down
     scene.add(rightLightBeam);
 
-    const leftLightBeam = new THREE.Mesh(lightBeamGeometry, lightBeamMaterial);
+    const leftLightBeam = new THREE.Mesh(
+      leftLightBeamGeometry,
+      leftLightBeamMaterial,
+    );
     leftLightBeam.position.set(-1.5, 2, 0);
-    // leftLightBeam.rotation.z = angleToRad(25);
-    // leftLightBeam.rotation.x = angleToRad(-3);
     leftLightBeam.rotation.z = 0; // Straight down
-    // leftLightBeam.rotation.z = angleToRad(90); // Facing down
     scene.add(leftLightBeam);
 
     const helper = new THREE.CameraHelper(spotLight.shadow.camera);
@@ -95,16 +107,11 @@ export default function HomePage() {
       color: 0xffffff,
       transparent: true,
       opacity: 0,
-      // side: THREE.DoubleSide,
-      // depthWrite: true,
-      // roughness: 0.5,
-      // metalness: 0.2,
     });
 
     // Create a mesh for the disc
     const disc = new THREE.Mesh(discGeometry, discMaterial);
     disc.receiveShadow = true;
-    // disc.position.set(0, 0, 0);
     disc.position.set(0, -0.95, 0);
     disc.rotation.x = angleToRad(90);
     scene.add(disc);
@@ -118,7 +125,7 @@ export default function HomePage() {
     const renderer = new THREE.WebGLRenderer({ antialias: true }); // remove antialias for performance
     renderer.setSize(window.innerWidth, window.innerHeight);
     containerRef.current?.appendChild(renderer.domElement);
-    // Enable local clipping planes in the renderer
+    // (important) Enable local clipping planes in the renderer
     renderer.clippingPlanes = [];
     renderer.localClippingEnabled = true;
 
@@ -132,6 +139,10 @@ export default function HomePage() {
     //
     function animateLighting() {
       let animationStartTime: number | null = null;
+      let malfunctionActive: boolean = false;
+      let malfunctionStartTime: number = 0;
+      let malfunctionDuration: number = 0;
+      let timeUntilNextMalfunction = getRandomInterval(5, 20) * 1000;
 
       function animate(time: number) {
         if (animationStartTime === null) {
@@ -141,22 +152,23 @@ export default function HomePage() {
 
         // Cube loading delay (1 second)
         if (elapsedTime < 1000) {
+          if (elapsedTime < 500) {
+            // Flicker for first 500ms using sine wave for smooth effect
+            const flickerIntensity = Math.sin(time * 0.1) * 0.5 + 0.5;
+            leftLightBeam.material.opacity = flickerIntensity * 0.3;
+            leftLightBeam.material.needsUpdate = true;
+          }
           requestAnimationFrame(animate);
           return;
         }
 
-        // Light beam rotation phase (1 second)
+        // Phase 2: Rotation & intensity animation: Light beam rotation phase (1 second)
         if (elapsedTime < 2000) {
           const rotationProgress = (elapsedTime - 1000) / 1000;
 
-          // Rotate right light beam
+          // Rotate light beams
           rightLightBeam.rotation.z = angleToRad(-25 * rotationProgress);
-          // rightLightBeam.rotation.x = angleToRad(90 - 90 * rotationProgress);
-
-          // Rotate left light beam
           leftLightBeam.rotation.z = angleToRad(25 * rotationProgress);
-          // leftLightBeam.rotation.x = angleToRad(90 - 90 * rotationProgress);
-
           // Gradually increase light intensity
           ambientLight.intensity = 0.01 + 0.99 * rotationProgress;
           pointLight.intensity = 0.01 + 0.49 * rotationProgress;
@@ -169,15 +181,53 @@ export default function HomePage() {
         // Final light and beam positioning
         rightLightBeam.rotation.z = angleToRad(-25);
         rightLightBeam.rotation.x = 0;
-
         leftLightBeam.rotation.z = angleToRad(25);
         leftLightBeam.rotation.x = 0;
 
         ambientLight.intensity = 1;
         pointLight.intensity = 0.5;
         spotLight.intensity = 1;
-      }
 
+        const currentTime = performance.now(); // More precise timing
+
+        // Check if it's time for a malfunction
+        if (
+          !malfunctionActive &&
+          currentTime - malfunctionStartTime >= timeUntilNextMalfunction
+        ) {
+          console.log("Malfunction started"); // Debug log
+          malfunctionActive = true;
+          malfunctionStartTime = currentTime;
+          malfunctionDuration = getRandomInterval(0, 3) * 1000; // 1-3 seconds
+          timeUntilNextMalfunction = getRandomInterval(5, 20) * 1000;
+        }
+
+        // Handle active malfunction
+        if (malfunctionActive) {
+          const malfunctionElapsedTime = currentTime - malfunctionStartTime;
+
+          if (malfunctionElapsedTime < malfunctionDuration) {
+            // More dramatic flicker effect
+            const flickerIntensity = Math.sin(time * 0.1) * 0.5 + 0.5;
+            leftLightBeam.material.opacity = flickerIntensity * 0.3;
+            leftLightBeam.material.needsUpdate = true;
+
+            console.log("Flickering:", flickerIntensity); // Debug log
+          } else {
+            // End of malfunction
+            console.log("Malfunction ended"); // Debug log
+            malfunctionActive = false;
+            leftLightBeam.material.opacity = 0.3; // Back to original opacity
+            leftLightBeam.material.needsUpdate = true;
+
+            // Set next malfunction timing
+            timeUntilNextMalfunction = getRandomInterval(5, 20) * 1000;
+            malfunctionStartTime = currentTime;
+          }
+        }
+        requestAnimationFrame(animate);
+      }
+      renderer.render(scene, camera);
       requestAnimationFrame(animate);
     }
     animateLighting();
