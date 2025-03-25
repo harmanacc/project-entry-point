@@ -56,10 +56,6 @@ export default function HomePage() {
     spotLight.target = cube;
     scene.add(spotLight);
 
-    // Add a helper to visualize the spotLight cone
-    const spotLightHelper = new THREE.SpotLightHelper(spotLight);
-    scene.add(spotLightHelper);
-
     // Simulate the light beam with a semi-transparent cone
     const clippingPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0.95);
     const rightLightBeamGeometry = new THREE.ConeGeometry(1.5, 8, 40);
@@ -98,9 +94,6 @@ export default function HomePage() {
     leftLightBeam.rotation.z = 0; // Straight down
     scene.add(leftLightBeam);
 
-    const helper = new THREE.CameraHelper(spotLight.shadow.camera);
-    scene.add(helper);
-
     // Create a geometry for the disc
     const discGeometry = new THREE.CircleGeometry(1.46, 32);
     const discMaterial = new THREE.MeshStandardMaterial({
@@ -132,9 +125,6 @@ export default function HomePage() {
     // 6- add the controls
     const controls = new OrbitControls(camera, renderer.domElement);
 
-    // Create an AxesHelper with a size of 5 units
-    const axesHelper = new THREE.AxesHelper(5);
-    scene.add(axesHelper);
     // 7- animate the scene
     //
     function animateLighting() {
@@ -240,6 +230,17 @@ export default function HomePage() {
       renderer.render(scene, camera);
     };
     animate();
+
+    // add helpers when in dev mode
+    // Create an AxesHelper with a size of 5 units
+    // const axesHelper = new THREE.AxesHelper(5);
+    // scene.add(axesHelper);
+    // const helper = new THREE.CameraHelper(spotLight.shadow.camera);
+    // scene.add(helper);
+    // // Add a helper to visualize the spotLight cone
+    // const spotLightHelper = new THREE.SpotLightHelper(spotLight);
+    // scene.add(spotLightHelper);
+
     // 8- handle resize
     const handleResize = () => {
       camera.aspect = window.innerWidth / window.innerHeight;
