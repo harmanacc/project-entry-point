@@ -10,3 +10,5 @@ pnpm next dev --turbo
 # or
 pnpm dev
 ```
+# Screenshots
+![Project Screenshot](https://raw.githubusercontent.com/harmanacc/project-entry-point/main/readme-image/Screenshot-one.png)
